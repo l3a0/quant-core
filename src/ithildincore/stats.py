@@ -27,18 +27,17 @@ already checked its own inputs. A sample of fewer than two observations
 returns an all-zero summary, a standard error of zero reports a t-statistic of
 zero, and the robust variance is floored at zero.
 
-That third guard is reachable. Bartlett weights keep the estimate
-non-negative only when every autocovariance divides by ``n``. This
-implementation divides each ``gamma_k`` by its ``n - k`` pairs instead, which
-inflates every lag term by ``n / (n - k)`` and is enough to lose the
-guarantee. Taking ``gamma_0`` from ``np.var(ddof=1)`` does not lose it, since
-that only enlarges the leading term. Random draws rarely find the case, and a
-search over 152,000 normal samples at every length from 2 to 39 reached no
-negative value. A series built for it does, from 23 observations upward, and
-the function then reports a robust t-statistic of zero whatever the naive one
-reads. The standard estimator divides by ``n`` and cannot go negative. This
-one keeps ``n - k`` because consumers have already committed numbers computed
-with it, which the next paragraph explains.
+That third guard is reachable. Dividing every autocovariance by ``n``
+guarantees a non-negative estimate, and that is what the standard estimator
+does. This implementation divides each ``gamma_k`` by its ``n - k`` pairs
+instead, which inflates every lag term by ``n / (n - k)`` and is enough to
+lose the guarantee. Taking ``gamma_0`` from ``np.var(ddof=1)`` does not lose
+it, since that only enlarges the leading term. Random draws did not find the
+case, and a search over 152,000 normal samples at every length from 2 to 39
+reached no negative value. A series built for it does, from 23 observations
+upward, and the function then reports a robust t-statistic of zero whatever
+the naive one reads. Changing the divisor to ``n`` would move numbers
+consumers have already committed, which the next paragraph explains.
 
 The arithmetic is pinned. Consumers commit numbers that trace to these exact
 floating-point operations, so reordering a sum or swapping ``np.mean`` for a
@@ -69,8 +68,11 @@ class NeweyWestSummary(NamedTuple):
 
     ``t_naive`` assumes independent observations and is the one that
     overstates the evidence under autocorrelation. ``t_newey_west`` is the
-    robust counterpart. ``lag`` is the ``L`` actually used, so a reader can
-    re-derive the result rather than trust it.
+    robust counterpart. It reads zero both when there is no evidence and when
+    the robust variance went negative and was floored, so a zero beside a
+    non-zero ``t_naive`` is the floor rather than a finding. ``lag`` is the
+    ``L`` actually used, so a reader can re-derive the result rather than
+    trust it.
     """
 
     n: int
@@ -86,7 +88,7 @@ def newey_west_summary(x: np.ndarray | Sequence[float]) -> NeweyWestSummary:
 
     ``var`` is the ``ddof=1`` sample variance, which is the ``gamma_0`` the
     module docstring's formula names. See that docstring for the estimator,
-    the lag rule, and the two guards on short or degenerate samples.
+    the lag rule, and the three guards.
     """
     arr = np.asarray(x, dtype=float)
     n = arr.size

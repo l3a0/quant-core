@@ -35,13 +35,21 @@ carry them.
    moved.
 3. **Pinned summaries.** Every field of one seeded `newey_west_summary` is
    held to six decimals. This is the guard the premise asks for: a change to
-   the degrees of freedom, the Bartlett weights, the lag rule or the floor
-   fails here rather than surfacing later as a consumer's number that quietly
-   moved.
+   the degrees of freedom, the Bartlett weights or the lag rule fails here
+   rather than surfacing later as a consumer's number that quietly moved. No
+   seeded series reaches the variance floor, so a change to the floor fails
+   the floor test named below instead.
 
-One test exists to hold a claim the prose makes.
-`TestTheFixedLagIsLoadBearing` executes the module docstring's warning that a
-data-chosen lag can reverse a verdict, on a series where it does.
+Three tests exist to hold claims the prose makes.
+
+1. `TestTheFixedLagIsLoadBearing` executes the `timeseries` docstring's
+   warning that a data-chosen lag can reverse a verdict, on a series where it
+   does.
+2. `test_the_variance_floor_is_not_reached_by_ordinary_data` is a smaller run
+   of the random search the `stats` docstring cites.
+3. `test_the_variance_floor_is_reached_from_23_observations` executes the
+   `stats` docstring's claim that a series built for it reaches the floor from
+   23 observations upward.
 
 ## The order
 

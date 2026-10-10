@@ -7,8 +7,10 @@ block over `scipy.stats.ttest_1samp` on a return series.
 
 The seeded summaries are pinned tightly on purpose. Consuming repositories
 commit numbers that trace to this arithmetic, so a change to the degrees of
-freedom, the Bartlett weights, the lag rule or the floor has to fail here
-rather than surface later as a result that quietly moved.
+freedom, the Bartlett weights or the lag rule has to fail here rather than
+surface later as a result that quietly moved. No seeded series reaches the
+floor, so a change to the floor fails
+``test_the_variance_floor_is_reached_from_23_observations`` instead.
 """
 
 from __future__ import annotations
@@ -157,12 +159,15 @@ class TestTheGuards:
         """The docstring says a series built for it reaches the floor from 23 on.
 
         No series shorter than 23 can, which the smallest eigenvalue at each
-        length shows. At 23 the eigenvector that reaches the minimum is such a
-        series. Shifted off zero it has a positive naive t, and the function
-        reports a robust t of zero because the floor fired.
+        length shows, and some series of every length from 23 to 60 can. At 23
+        the eigenvector that reaches the minimum is such a series. Shifted off
+        zero it has a positive naive t, and the function reports a robust t of
+        zero because the floor fired.
         """
         for n in range(2, 23):
             assert np.linalg.eigvalsh(self._unfloored_form(n)).min() > -1e-12
+        for n in range(23, 61):
+            assert np.linalg.eigvalsh(self._unfloored_form(n)).min() < 0.0
         values, vectors = np.linalg.eigh(self._unfloored_form(23))
         assert values[0] < 0.0
         summary = newey_west_summary(vectors[:, 0] + 0.01)
