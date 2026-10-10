@@ -12,11 +12,10 @@ heteroskedasticity-and-autocorrelation-consistent variance of the mean is
 
 ``Var(mean) = (1/n) * [gamma_0 + 2 * sum_{k=1}^{L} w_k * gamma_k]``
 
-where ``gamma_k`` is the lag-k autocovariance and ``w_k = 1 - k/(L+1)`` are
-the Bartlett weights, which are what keep the estimate from going negative in
-the usual case. The lag count ``L`` comes from ``newey_west_lag``. The
-framework is Andrews (1991) and the operational formula is Newey and West
-(1994).
+where ``gamma_k`` is the lag-k autocovariance, averaged over the ``n - k``
+pairs that lag has, and ``w_k = 1 - k/(L+1)`` are the Bartlett weights. The
+lag count ``L`` comes from ``newey_west_lag``. The framework is Andrews
+(1991) and the operational formula is Newey and West (1994).
 
 The lag index is whatever the caller's series index is. Calendar days for a
 daily series, trade order for a ledger, where lag 1 is one trade cycle rather
@@ -28,13 +27,18 @@ already checked its own inputs. A sample of fewer than two observations
 returns an all-zero summary, a standard error of zero reports a t-statistic of
 zero, and the robust variance is floored at zero.
 
-That third guard is defensive rather than observed. Bartlett weights exist to
-keep the estimate non-negative, and this implementation takes ``gamma_0`` from
-``np.var(ddof=1)`` while the autocovariances divide by ``n``, which is enough
-of a mismatch to lose the guarantee in principle. A search over 152,000 random
-samples at every length from 2 to 39 reached no negative value, so nothing
-here claims the case occurs. The floor costs one comparison and removes a
-``math.domain error`` nobody could reproduce.
+That third guard is reachable. Bartlett weights keep the estimate
+non-negative only when every autocovariance divides by ``n``. This
+implementation divides each ``gamma_k`` by its ``n - k`` pairs instead, which
+inflates every lag term by ``n / (n - k)`` and is enough to lose the
+guarantee. Taking ``gamma_0`` from ``np.var(ddof=1)`` does not lose it, since
+that only enlarges the leading term. Random draws rarely find the case, and a
+search over 152,000 normal samples at every length from 2 to 39 reached no
+negative value. A series built for it does, from 23 observations upward, and
+the function then reports a robust t-statistic of zero whatever the naive one
+reads. The standard estimator divides by ``n`` and cannot go negative. This
+one keeps ``n - k`` because consumers have already committed numbers computed
+with it, which the next paragraph explains.
 
 The arithmetic is pinned. Consumers commit numbers that trace to these exact
 floating-point operations, so reordering a sum or swapping ``np.mean`` for a
